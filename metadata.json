@@ -1,0 +1,8 @@
+{
+  "name": "Yashas C Portfolio",
+  "description": "Full-Stack Personal Developer Portfolio for Yashas C, Computer Science Student & Aspiring Software Developer featuring profile photo upload, project showcase, skills, GitHub integration, timeline, and Express/MongoDB backend.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
