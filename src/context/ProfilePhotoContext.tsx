@@ -14,17 +14,20 @@ import {
 // PERMANENT PROFILE PHOTO
 // =====================================================
 //
-// This image is stored inside the GitHub repository:
+// The image is located at:
 //
 // src/assets/images/profile-photo.png
 //
-// Because it is imported by Vite, it becomes part of
-// the production website and is available to everyone.
+// new URL() allows Vite to correctly process the image
+// during the GitHub Pages build.
 // =====================================================
 
-import PROFILE_PHOTO from '../assets/images/profile-photo.png';
+const PERMANENT_PROFILE_PHOTO = new URL(
+  '../assets/images/profile-photo.png',
+  import.meta.url
+).href;
 
-// Default professional developer avatar SVG fallback
+// Default fallback avatar
 export const DEFAULT_AVATAR = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none"><rect width="200" height="200" rx="100" fill="%230f172a"/><circle cx="100" cy="78" r="38" fill="%2338bdf8"/><path d="M42 166C42 134 68 116 100 116C132 116 158 134 158 166" fill="%2338bdf8"/><circle cx="100" cy="78" r="32" fill="%230284c7"/><path d="M48 166C48 138 71 122 100 122C129 122 152 138 152 166" fill="%230284c7"/><text x="100" y="85" text-anchor="middle" fill="%23ffffff" font-size="28" font-family="system-ui,sans-serif" font-weight="bold">YC</text></svg>`;
 
 interface ProfilePhotoContextType {
@@ -33,7 +36,6 @@ interface ProfilePhotoContextType {
   isUploadModalOpen: boolean;
 
   openUploadModal: () => void;
-
   closeUploadModal: () => void;
 
   updatePhotoFromFile: (
@@ -55,36 +57,29 @@ export const ProfilePhotoProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
 
-  // =====================================================
-  // IMPORTANT
-  // =====================================================
-  // The GitHub image is now the permanent photo.
-  // =====================================================
+  const [photoUrl, setPhotoUrl] =
+    useState<string>(
+      PERMANENT_PROFILE_PHOTO
+    );
 
-  const [
-    photoUrl,
-    setPhotoUrl,
-  ] = useState<string>(PROFILE_PHOTO);
+  const [isCustomPhoto, setIsCustomPhoto] =
+    useState<boolean>(false);
 
-  const [
-    isCustomPhoto,
-    setIsCustomPhoto,
-  ] = useState<boolean>(false);
-
-  const [
-    isUploadModalOpen,
-    setIsUploadModalOpen,
-  ] = useState<boolean>(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] =
+    useState<boolean>(false);
 
   // =====================================================
-  // INITIALIZE PERMANENT PHOTO
+  // LOAD PROFILE PHOTO
   // =====================================================
 
   useEffect(() => {
-    // Always use the image stored in the repository.
-    setPhotoUrl(PROFILE_PHOTO);
+    /*
+     * Always start with the permanent GitHub photo.
+     */
+    setPhotoUrl(
+      PERMANENT_PROFILE_PHOTO
+    );
 
-    // It is the permanent portfolio photo.
     setIsCustomPhoto(false);
   }, []);
 
@@ -105,18 +100,7 @@ export const ProfilePhotoProvider: React.FC<{
   };
 
   // =====================================================
-  // TEMPORARY UPLOAD
-  // =====================================================
-  //
-  // IMPORTANT:
-  // A GitHub Pages website cannot directly commit a new
-  // image into the GitHub repository from a visitor's
-  // browser.
-  //
-  // This function previews/saves the selected photo in
-  // the current browser.
-  //
-  // Your permanent portfolio photo remains PROFILE_PHOTO.
+  // SELECT / SAVE PHOTO
   // =====================================================
 
   const updatePhotoFromFile = async (
@@ -126,7 +110,6 @@ export const ProfilePhotoProvider: React.FC<{
     error?: string;
   }> => {
 
-    // Validate image
     const validation =
       validateProfilePhoto(file);
 
@@ -140,26 +123,27 @@ export const ProfilePhotoProvider: React.FC<{
     }
 
     try {
-      // Read selected image
+
       const dataUrl =
         await readFileAsDataUrl(file);
 
-      // Save selected photo to browser
+      /*
+       * Save in browser so the newly selected
+       * photo immediately appears for this visitor.
+       */
       try {
         localStorage.setItem(
           'yashas_c_profile_photo',
           dataUrl
         );
-      } catch (storageError) {
+      } catch (error) {
         console.warn(
-          'Could not save photo to localStorage.',
-          storageError
+          'Browser storage unavailable:',
+          error
         );
       }
 
-      // Show selected photo immediately
       setPhotoUrl(dataUrl);
-
       setIsCustomPhoto(true);
 
       return {
@@ -167,6 +151,7 @@ export const ProfilePhotoProvider: React.FC<{
       };
 
     } catch (error) {
+
       console.error(
         'Error processing profile photo:',
         error
@@ -183,10 +168,6 @@ export const ProfilePhotoProvider: React.FC<{
   // =====================================================
   // REMOVE PHOTO
   // =====================================================
-  //
-  // Removing a temporary browser photo will restore
-  // your permanent GitHub profile photo.
-  // =====================================================
 
   const removePhoto = () => {
 
@@ -196,13 +177,17 @@ export const ProfilePhotoProvider: React.FC<{
       );
     } catch (error) {
       console.warn(
-        'Could not remove browser photo.',
+        'Could not remove stored photo:',
         error
       );
     }
 
-    // Restore permanent GitHub photo
-    setPhotoUrl(PROFILE_PHOTO);
+    /*
+     * Restore permanent GitHub photo.
+     */
+    setPhotoUrl(
+      PERMANENT_PROFILE_PHOTO
+    );
 
     setIsCustomPhoto(false);
   };
