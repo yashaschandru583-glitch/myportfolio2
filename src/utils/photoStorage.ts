@@ -1,4 +1,3 @@
-```typescript
 const PROFILE_PHOTO_KEY = 'yashas_c_profile_photo';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
@@ -17,9 +16,7 @@ export interface PhotoValidationResult {
   error?: string;
 }
 
-/**
- * Validate profile photo.
- */
+// Validate uploaded image
 export function validateProfilePhoto(
   file: File
 ): PhotoValidationResult {
@@ -49,9 +46,7 @@ export function validateProfilePhoto(
   };
 }
 
-/**
- * Convert uploaded file to Data URL.
- */
+// Convert File to Data URL
 export function readFileAsDataUrl(
   file: File
 ): Promise<string> {
@@ -62,28 +57,19 @@ export function readFileAsDataUrl(
       if (typeof reader.result === 'string') {
         resolve(reader.result);
       } else {
-        reject(
-          new Error('Unable to read image.')
-        );
+        reject(new Error('Unable to read image.'));
       }
     };
 
     reader.onerror = () => {
-      reject(
-        new Error('Unable to read image.')
-      );
+      reject(new Error('Unable to read image.'));
     };
 
     reader.readAsDataURL(file);
   });
 }
 
-/**
- * Resize and compress the image.
- *
- * This keeps the image small enough for browser
- * localStorage.
- */
+// Resize and compress image
 export function resizeAndCompressImage(
   dataUrl: string,
   maxWidth: number = MAX_IMAGE_WIDTH,
@@ -106,21 +92,15 @@ export function resizeAndCompressImage(
         width = Math.round(width * scale);
         height = Math.round(height * scale);
 
-        const canvas =
-          document.createElement('canvas');
+        const canvas = document.createElement('canvas');
 
         canvas.width = width;
         canvas.height = height;
 
-        const context =
-          canvas.getContext('2d');
+        const context = canvas.getContext('2d');
 
         if (!context) {
-          reject(
-            new Error(
-              'Could not process image.'
-            )
-          );
+          reject(new Error('Could not process image.'));
           return;
         }
 
@@ -132,11 +112,10 @@ export function resizeAndCompressImage(
           height
         );
 
-        const compressedImage =
-          canvas.toDataURL(
-            'image/jpeg',
-            0.85
-          );
+        const compressedImage = canvas.toDataURL(
+          'image/jpeg',
+          0.85
+        );
 
         resolve(compressedImage);
       } catch (error) {
@@ -145,40 +124,29 @@ export function resizeAndCompressImage(
     };
 
     image.onerror = () => {
-      reject(
-        new Error(
-          'Could not process image.'
-        )
-      );
+      reject(new Error('Could not process image.'));
     };
 
     image.src = dataUrl;
   });
 }
 
-/**
- * Save profile photo.
- */
+// Save profile photo
 export async function saveProfilePhoto(
   file: File
 ): Promise<string> {
-  const validation =
-    validateProfilePhoto(file);
+  const validation = validateProfilePhoto(file);
 
   if (!validation.valid) {
     throw new Error(
-      validation.error ||
-        'Invalid profile photo.'
+      validation.error || 'Invalid profile photo.'
     );
   }
 
-  const dataUrl =
-    await readFileAsDataUrl(file);
+  const dataUrl = await readFileAsDataUrl(file);
 
   const compressedImage =
-    await resizeAndCompressImage(
-      dataUrl
-    );
+    await resizeAndCompressImage(dataUrl);
 
   try {
     localStorage.setItem(
@@ -187,28 +155,26 @@ export async function saveProfilePhoto(
     );
   } catch (error) {
     throw new Error(
-      'Unable to save the photo. Please try a smaller image or clear some browser storage.'
+      'Unable to save the photo. Please try a smaller image.'
     );
   }
 
   return compressedImage;
 }
 
-/**
- * Get stored profile photo.
- *
- * This is the function your existing
- * ProfilePhotoContext.tsx expects.
- */
-export function getStoredProfilePhoto():
-  string | null {
+// ======================================================
+// IMPORTANT FUNCTIONS USED BY ProfilePhotoContext.tsx
+// ======================================================
+
+// Get stored profile photo
+export function getStoredProfilePhoto(): string | null {
   try {
     return localStorage.getItem(
       PROFILE_PHOTO_KEY
     );
   } catch (error) {
     console.error(
-      'Unable to read stored profile photo:',
+      'Unable to read profile photo:',
       error
     );
 
@@ -216,31 +182,22 @@ export function getStoredProfilePhoto():
   }
 }
 
-/**
- * Remove stored profile photo.
- *
- * This is also compatible with your
- * existing ProfilePhotoContext.tsx.
- */
-export function removeStoredProfilePhoto():
-  void {
+// Remove stored profile photo
+export function removeStoredProfilePhoto(): void {
   try {
     localStorage.removeItem(
       PROFILE_PHOTO_KEY
     );
   } catch (error) {
     console.error(
-      'Unable to remove stored profile photo:',
+      'Unable to remove profile photo:',
       error
     );
   }
 }
 
-/**
- * Check whether a custom profile photo exists.
- */
-export function hasStoredProfilePhoto():
-  boolean {
+// Check if a photo exists
+export function hasStoredProfilePhoto(): boolean {
   try {
     return Boolean(
       localStorage.getItem(
@@ -252,10 +209,7 @@ export function hasStoredProfilePhoto():
   }
 }
 
-/**
- * Aliases kept for compatibility with
- * other parts of the application.
- */
+// Compatibility aliases
 export const getSavedProfilePhoto =
   getStoredProfilePhoto;
 
@@ -264,4 +218,3 @@ export const removeSavedProfilePhoto =
 
 export const hasSavedProfilePhoto =
   hasStoredProfilePhoto;
-```
