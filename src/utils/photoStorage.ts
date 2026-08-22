@@ -1,89 +1,193 @@
-// Utility helper for profile photo validation, storage, and cloud-readiness
+const PROFILE_PHOTO_KEY = 'yashas_c_profile_photo';
 
-export const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-export const MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
-const STORAGE_KEY = 'yashas_portfolio_profile_photo_v1';
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+const MAX_IMAGE_WIDTH = 1000;
+const MAX_IMAGE_HEIGHT = 1000;
+
+const ALLOWED_TYPES = [
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+];
 
 export interface PhotoValidationResult {
   valid: boolean;
   error?: string;
 }
 
+/**
+ * Validate the uploaded profile photo.
+ */
 export function validateProfilePhoto(file: File): PhotoValidationResult {
   if (!file) {
-    return { valid: false, error: 'No file selected.' };
-  }
-
-  if (!ALLOWED_PHOTO_TYPES.includes(file.type.toLowerCase())) {
     return {
       valid: false,
-      error: 'Invalid file format. Please upload a JPG, JPEG, PNG, or WEBP image.'
+      error: 'Please select an image.',
     };
   }
 
-  if (file.size > MAX_PHOTO_SIZE_BYTES) {
-    const sizeInMB = (file.size / (1024 * 1024)).toFixed(1);
+  if (!ALLOWED_TYPES.includes(file.type)) {
     return {
       valid: false,
-      error: `File is too large (${sizeInMB}MB). Maximum allowed size is 5MB.`
+      error: 'Please upload a JPG, PNG, or WEBP image.',
     };
   }
 
-  return { valid: true };
+  if (file.size > MAX_FILE_SIZE) {
+    return {
+      valid: false,
+      error: 'Image size must be less than 5MB.',
+    };
+  }
+
+  return {
+    valid: true,
+  };
 }
 
 /**
- * Loads the saved profile photo from browser local storage.
+ * Read a file as a Data URL.
  */
-export function getStoredProfilePhoto(): string | null {
+export function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+      } else {
+        reject(new Error('Unable to read image.'));
+      }
+    };
+
+    reader.onerror = () => {
+      reject(new Error('Unable to read image.'));
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Resize and compress the image before saving it.
+ *
+ * This is important because browser localStorage has limited storage.
+ */
+export function resizeAndCompressImage(
+  dataUrl: string,
+  maxWidth = MAX_IMAGE_WIDTH,
+  maxHeight = MAX_IMAGE_HEIGHT
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+
+    image.onload = () => {
+      try {
+        let width = image.width;
+        let height = image.height;
+
+        const scale = Math.min(
+          maxWidth / width,
+          maxHeight / height,
+          1
+        );
+
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+
+        const canvas = document.createElement('canvas');
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const context = canvas.getContext('2d');
+
+        if (!context) {
+          reject(new Error('Could not process image.'));
+          return;
+        }
+
+        context.drawImage(image, 0, 0, width, height);
+
+        // Convert to JPEG to reduce localStorage size.
+        const compressedImage = canvas.toDataURL(
+          'image/jpeg',
+          0.85
+        );
+
+        resolve(compressedImage);
+      } catch (error) {
+        reject(error);
+      }
+    };
+
+    image.onerror = () => {
+      reject(new Error('Could not process image.'));
+    };
+
+    image.src = dataUrl;
+  });
+}
+
+/**
+ * Save the profile photo to browser localStorage.
+ */
+export async function saveProfilePhoto(file: File): Promise<string> {
+  const validation = validateProfilePhoto(file);
+
+  if (!validation.valid) {
+    throw new Error(validation.error || 'Invalid profile photo.');
+  }
+
+  const dataUrl = await readFileAsDataUrl(file);
+
+  const compressedImage = await resizeAndCompressImage(dataUrl);
+
   try {
-    return localStorage.getItem(STORAGE_KEY);
-  } catch (err) {
-    console.warn('Unable to access localStorage for profile photo:', err);
+    localStorage.setItem(
+      PROFILE_PHOTO_KEY,
+      compressedImage
+    );
+  } catch (error) {
+    throw new Error(
+      'Unable to save the photo. Please try a smaller image or clear some browser storage.'
+    );
+  }
+
+  return compressedImage;
+}
+
+/**
+ * Get the saved profile photo.
+ */
+export function getSavedProfilePhoto(): string | null {
+  try {
+    return localStorage.getItem(PROFILE_PHOTO_KEY);
+  } catch (error) {
+    console.error('Unable to read saved profile photo:', error);
     return null;
   }
 }
 
 /**
- * Saves profile photo data URL to browser local storage.
- * In a future cloud-connected version, this function can upload the File to
- * Cloudinary or Firebase Storage and store the returned public HTTPS URL.
+ * Remove the saved profile photo.
  */
-export function saveProfilePhoto(dataUrl: string): boolean {
+export function removeSavedProfilePhoto(): void {
   try {
-    localStorage.setItem(STORAGE_KEY, dataUrl);
-    return true;
-  } catch (err) {
-    console.error('Failed to save profile photo to localStorage:', err);
+    localStorage.removeItem(PROFILE_PHOTO_KEY);
+  } catch (error) {
+    console.error('Unable to remove profile photo:', error);
+  }
+}
+
+/**
+ * Check whether a custom profile photo exists.
+ */
+export function hasSavedProfilePhoto(): boolean {
+  try {
+    return Boolean(localStorage.getItem(PROFILE_PHOTO_KEY));
+  } catch (error) {
     return false;
   }
-}
-
-/**
- * Removes the custom profile photo from browser local storage.
- */
-export function removeStoredProfilePhoto(): void {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch (err) {
-    console.warn('Unable to remove profile photo from localStorage:', err);
-  }
-}
-
-/**
- * Reads a File and converts it to a base64 Data URL for preview and local storage.
- */
-export function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        resolve(reader.result);
-      } else {
-        reject(new Error('Failed to read image as base64 string'));
-      }
-    };
-    reader.onerror = () => reject(reader.error || new Error('FileReader error'));
-    reader.readAsDataURL(file);
-  });
 }
