@@ -1,3 +1,4 @@
+```typescript
 const PROFILE_PHOTO_KEY = 'yashas_c_profile_photo';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
@@ -17,9 +18,11 @@ export interface PhotoValidationResult {
 }
 
 /**
- * Validate the uploaded profile photo.
+ * Validate profile photo.
  */
-export function validateProfilePhoto(file: File): PhotoValidationResult {
+export function validateProfilePhoto(
+  file: File
+): PhotoValidationResult {
   if (!file) {
     return {
       valid: false,
@@ -47,9 +50,11 @@ export function validateProfilePhoto(file: File): PhotoValidationResult {
 }
 
 /**
- * Read a file as a Data URL.
+ * Convert uploaded file to Data URL.
  */
-export function readFileAsDataUrl(file: File): Promise<string> {
+export function readFileAsDataUrl(
+  file: File
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
@@ -57,12 +62,16 @@ export function readFileAsDataUrl(file: File): Promise<string> {
       if (typeof reader.result === 'string') {
         resolve(reader.result);
       } else {
-        reject(new Error('Unable to read image.'));
+        reject(
+          new Error('Unable to read image.')
+        );
       }
     };
 
     reader.onerror = () => {
-      reject(new Error('Unable to read image.'));
+      reject(
+        new Error('Unable to read image.')
+      );
     };
 
     reader.readAsDataURL(file);
@@ -70,14 +79,15 @@ export function readFileAsDataUrl(file: File): Promise<string> {
 }
 
 /**
- * Resize and compress the image before saving it.
+ * Resize and compress the image.
  *
- * This is important because browser localStorage has limited storage.
+ * This keeps the image small enough for browser
+ * localStorage.
  */
 export function resizeAndCompressImage(
   dataUrl: string,
-  maxWidth = MAX_IMAGE_WIDTH,
-  maxHeight = MAX_IMAGE_HEIGHT
+  maxWidth: number = MAX_IMAGE_WIDTH,
+  maxHeight: number = MAX_IMAGE_HEIGHT
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -96,25 +106,37 @@ export function resizeAndCompressImage(
         width = Math.round(width * scale);
         height = Math.round(height * scale);
 
-        const canvas = document.createElement('canvas');
+        const canvas =
+          document.createElement('canvas');
 
         canvas.width = width;
         canvas.height = height;
 
-        const context = canvas.getContext('2d');
+        const context =
+          canvas.getContext('2d');
 
         if (!context) {
-          reject(new Error('Could not process image.'));
+          reject(
+            new Error(
+              'Could not process image.'
+            )
+          );
           return;
         }
 
-        context.drawImage(image, 0, 0, width, height);
-
-        // Convert to JPEG to reduce localStorage size.
-        const compressedImage = canvas.toDataURL(
-          'image/jpeg',
-          0.85
+        context.drawImage(
+          image,
+          0,
+          0,
+          width,
+          height
         );
+
+        const compressedImage =
+          canvas.toDataURL(
+            'image/jpeg',
+            0.85
+          );
 
         resolve(compressedImage);
       } catch (error) {
@@ -123,7 +145,11 @@ export function resizeAndCompressImage(
     };
 
     image.onerror = () => {
-      reject(new Error('Could not process image.'));
+      reject(
+        new Error(
+          'Could not process image.'
+        )
+      );
     };
 
     image.src = dataUrl;
@@ -131,18 +157,28 @@ export function resizeAndCompressImage(
 }
 
 /**
- * Save the profile photo to browser localStorage.
+ * Save profile photo.
  */
-export async function saveProfilePhoto(file: File): Promise<string> {
-  const validation = validateProfilePhoto(file);
+export async function saveProfilePhoto(
+  file: File
+): Promise<string> {
+  const validation =
+    validateProfilePhoto(file);
 
   if (!validation.valid) {
-    throw new Error(validation.error || 'Invalid profile photo.');
+    throw new Error(
+      validation.error ||
+        'Invalid profile photo.'
+    );
   }
 
-  const dataUrl = await readFileAsDataUrl(file);
+  const dataUrl =
+    await readFileAsDataUrl(file);
 
-  const compressedImage = await resizeAndCompressImage(dataUrl);
+  const compressedImage =
+    await resizeAndCompressImage(
+      dataUrl
+    );
 
   try {
     localStorage.setItem(
@@ -159,35 +195,73 @@ export async function saveProfilePhoto(file: File): Promise<string> {
 }
 
 /**
- * Get the saved profile photo.
+ * Get stored profile photo.
+ *
+ * This is the function your existing
+ * ProfilePhotoContext.tsx expects.
  */
-export function getSavedProfilePhoto(): string | null {
+export function getStoredProfilePhoto():
+  string | null {
   try {
-    return localStorage.getItem(PROFILE_PHOTO_KEY);
+    return localStorage.getItem(
+      PROFILE_PHOTO_KEY
+    );
   } catch (error) {
-    console.error('Unable to read saved profile photo:', error);
+    console.error(
+      'Unable to read stored profile photo:',
+      error
+    );
+
     return null;
   }
 }
 
 /**
- * Remove the saved profile photo.
+ * Remove stored profile photo.
+ *
+ * This is also compatible with your
+ * existing ProfilePhotoContext.tsx.
  */
-export function removeSavedProfilePhoto(): void {
+export function removeStoredProfilePhoto():
+  void {
   try {
-    localStorage.removeItem(PROFILE_PHOTO_KEY);
+    localStorage.removeItem(
+      PROFILE_PHOTO_KEY
+    );
   } catch (error) {
-    console.error('Unable to remove profile photo:', error);
+    console.error(
+      'Unable to remove stored profile photo:',
+      error
+    );
   }
 }
 
 /**
  * Check whether a custom profile photo exists.
  */
-export function hasSavedProfilePhoto(): boolean {
+export function hasStoredProfilePhoto():
+  boolean {
   try {
-    return Boolean(localStorage.getItem(PROFILE_PHOTO_KEY));
+    return Boolean(
+      localStorage.getItem(
+        PROFILE_PHOTO_KEY
+      )
+    );
   } catch (error) {
     return false;
   }
 }
+
+/**
+ * Aliases kept for compatibility with
+ * other parts of the application.
+ */
+export const getSavedProfilePhoto =
+  getStoredProfilePhoto;
+
+export const removeSavedProfilePhoto =
+  removeStoredProfilePhoto;
+
+export const hasSavedProfilePhoto =
+  hasStoredProfilePhoto;
+```
